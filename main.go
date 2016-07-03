@@ -3,7 +3,7 @@ package main
 
 import (
     "github.com/confyrm/gorest/admin"
-    "github.com/confyrm/gorest/app"
+    "github.com/confyrm/gorest/servers/slack"
     "github.com/confyrm/gorest/config"
 )
 
@@ -16,7 +16,8 @@ func main() {
   //  Run the admin server as a go function.  Currently, all it supports is
   // /exit.
   go admin.Server(c)
-  
+
   // Run the main app
-  app.Server(c)
+  app := slack.New(c)
+  app.Run()
 }

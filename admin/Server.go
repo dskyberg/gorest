@@ -13,8 +13,8 @@ import (
 
 func Server(config *config.Config)  {
 
-    router := RouteSet.New(config)
-    loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)
-    log.Printf("Admin: Listening on %d...", config.GetInt("ADMIN_PORT"))
-    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", config.GetInt("ADMIN_PORT")), loggedRouter))
+  router := RouteSet.New(config)
+  loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)
+  log.Printf("Admin: Listening on %d...", config.GetInt("ADMIN_PORT"))
+  log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", config.GetInt("ADMIN_PORT")), loggedRouter))
 }

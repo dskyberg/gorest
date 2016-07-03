@@ -2,8 +2,8 @@
 package config
 
 import (
-  "fmt"
   "log"
+  "bytes"
   "time"
   "strings"
   "path/filepath"
@@ -35,6 +35,9 @@ func New(fileName string, appName string) *Config {
 
   v := viper.New()
   v.SetDefault("APP_NAME", appName)
+  v.SetDefault("APP_PORT", 8080)
+  v.SetDefault("ADMIN_PORT", 8001)
+
   v.SetConfigName(config)
 
   v.AutomaticEnv()
@@ -45,14 +48,24 @@ func New(fileName string, appName string) *Config {
   }
   err := v.ReadInConfig() // Find and read the config file
   if err != nil { // Handle errors reading the config file
-    panic(fmt.Errorf("Fatal error config file: %s \n", err))
+    log.Printf("Error reading config file: %s \n", err)
+  } else {
+    v.WatchConfig()
+    v.OnConfigChange(func(e fsnotify.Event) {
+      log.Println("Config file changed:", e.Name)
+    })
   }
-  v.WatchConfig()
-  v.OnConfigChange(func(e fsnotify.Event) {
-    log.Println("Config file changed:", e.Name)
-  })
   c := Config{v}
   return &c
+}
+
+// Key is just a helper function that concats two strings much faster than
+// Go's native +=
+func Key(pre string, key string) string {
+  var buffer bytes.Buffer
+  buffer.WriteString(pre)
+  buffer.WriteString(key)
+  return buffer.String()
 }
 
 func ParseConfig(fileName string) (string, string) {
@@ -100,4 +113,12 @@ func (c *Config) GetTime(key string) time.Time {
 }
 func (c *Config) GetDuration(key string) time.Duration {
   return c.v.GetDuration(key)
+}
+func (c *Config) IsSet(key string) bool {
+  return c.v.IsSet(key)
+}
+// If you need to do anything simpler than loading a config, and getting
+// values, then you wil likely want to work directly with the Viper instance.
+func (c *Config) Viper() *viper.Viper {
+  return c.v
 }

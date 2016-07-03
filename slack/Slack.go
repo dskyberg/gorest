@@ -2,6 +2,11 @@
 // types for custom commands to receive REST requests from Slack.
 package slack
 
+import (
+  "fmt"
+  "strings"
+  "errors"
+)
 // The Slack Request that is sent by Slack to a custom app.
 type Request struct {
   // The token that was used by Slack.  This should be validated against
@@ -93,4 +98,148 @@ type Response struct {
   ResponseType string `json:"response_type"`
   Text string `json:"text"`
   Attachments Attachments `json:"attachments,omitempty"`
+}
+
+// The Slack slash commands that we process contain a consistent structure that
+// can be leveraged for any type of activity.
+type DevHubCommand struct {
+  Commands []string
+  Params map[string]string
+}
+
+const SLASH_DELIM = " "
+const TRIM_CUTSET = " \n"
+const KV_DELIM = "="
+
+
+func (sReq *Request) TextToCommand() (*DevHubCommand, error) {
+  // Trim the string first, to remove any unwanted spaces and new lines
+  t := strings.Trim(sReq.Text, TRIM_CUTSET)
+  if len(t) == 0 {
+    err := errors.New("Error parsing DevHub command: Empty string")
+    return nil, err
+  }
+
+  // Get the set of commands, and whatever text may be remaining after the commands
+  commands, kvText := ParseCommands(t)
+  kv, err := ParseKeyValuePairs(kvText)
+  if err != nil {
+    return nil, err
+  }
+
+  return &DevHubCommand{commands, kv}, nil
+}
+
+// ParseCommands is a helper function that parses out any commands that are
+// placed before the Key/Value pairs in the provided text.
+func ParseCommands(text string) ([]string, string) {
+  // Grab everything up to the first key
+  var cmdText string
+  var kvText string
+  firstKey := FindStartOfNextKey(text)
+
+  if firstKey > 0 {
+    cmdText = text[:firstKey-1]
+    kvText = text[firstKey:]
+  } else {
+    // There doesn't appear to be any kv pairs.
+    cmdText = text
+    kvText = ""
+  }
+  // Read the list of commands first
+  tmp := strings.Split(cmdText, " ")
+  for i := 0; i < len(tmp); i++ {
+    tmp[i] = strings.Trim(tmp[i], TRIM_CUTSET)
+  }
+  var commands []string
+  for _, x := range tmp {
+    if len(x) > 0 {
+      commands = append(commands, x)
+    }
+  }
+  return commands, kvText
+}
+
+func ParseKeyValuePairs(kvText string) (map[string]string, error) {
+  //Split on KV_DELIM.  This will yield an even number of values in s, where
+  // s[i] = key, s[i+1] = value
+  kv := make(map[string]string)
+
+  for x := 0; x < 10; x++ { // Just to prevent infinite loop!
+    i := strings.Index(kvText, KV_DELIM)
+
+    if i == -1 {
+      break
+    }
+
+    k := strings.ToLower(strings.Trim(kvText[:i], TRIM_CUTSET))
+    //fmt.Printf(" - k: %s\n", k)
+    kvText = strings.Trim(kvText[i + 1:], TRIM_CUTSET)
+
+    if len(kvText) == 0 {
+      err := errors.New(fmt.Sprintf("Error parsing Key Value pairs: No remainder for key: %s ", k ))
+      return nil, err
+    }
+
+    j := FindStartOfNextKey(kvText)
+    if j == -1 {
+      // Last value in k/v pairs
+      v := strings.Trim(kvText, TRIM_CUTSET)
+      kv[k] = v
+      //fmt.Printf(" - v: [%s]\n", v)
+      break
+    }
+
+
+    // j now sits at letter of the next key.
+    v := strings.ToLower(strings.Trim(kvText[:j - 1], TRIM_CUTSET))
+    //fmt.Printf(" - v: [%s]\n", v)
+    kv[k] = v
+    kvText = strings.Trim(kvText[j:], TRIM_CUTSET)
+  }
+  return kv, nil
+}
+
+
+func FindStartOfNextKey(text string) int {
+  t := strings.TrimLeft(text, SLASH_DELIM)
+
+  if len(t) == 0 {
+    // No text to test
+    return -1
+  }
+  i := strings.Index(t, KV_DELIM)
+
+  if i == -1 {
+    // No keys in the text
+    return i
+  }
+
+  if i == 0 {
+    // No keys, because text starts with '='
+    return -1
+  }
+
+  if i == len(t) - 1 {
+    // No keys, because text ends with '='
+    return -1
+  }
+
+  for i--; i > 0; i-- {
+    if t[i] != ' ' {
+      break
+    }
+  }
+
+  // Now skip the key
+  for {
+    if i == 1 {
+      break
+    }
+    if t[i - 1] == ' ' {
+      break
+    }
+    i--
+  }
+  return i
 }

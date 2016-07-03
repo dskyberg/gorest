@@ -1,4 +1,6 @@
-// Package routes defines the routes for this server, and the route handlers.
+// Package routes defines the http routes for this server, and the
+// route handlers. See github.com/confyrm/gorest/router.
+// For more info on routes, see github.com/gorilla/mux
 package routes
 
 import (
@@ -6,6 +8,9 @@ import (
     "github.com/confyrm/gorest/router"
 )
 
+// RouteSet is the static set of http routes.  To add a new route:
+// 1. Create a new route handler in this package.  See Index.go example.
+// 2. Add a router.Route to RouteSet.
 var RouteSet = router.Routes{
   router.Route{
     "Index",
@@ -18,5 +23,11 @@ var RouteSet = router.Routes{
     "GET",
     "/exit",
     Exit,
+  },
+  router.Route{
+    "Test",
+    "POST",
+    "/test",
+    Test,
   },
 }
