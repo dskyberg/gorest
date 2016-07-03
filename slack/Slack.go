@@ -107,7 +107,7 @@ type DevHubCommand struct {
   Params map[string]string
 }
 
-const SLASH_DELIM = " "
+const SLASH_DELIM = " \n"
 const TRIM_CUTSET = " \n"
 const KV_DELIM = "="
 
@@ -138,11 +138,17 @@ func ParseCommands(text string) ([]string, string) {
   var kvText string
   firstKey := FindStartOfNextKey(text)
 
-  if firstKey > 0 {
+  if firstKey == 0 {
+    // There are KV's but no commands
+    fmt.Print("ParseCommands: first key starts at 0\n")
+    return nil, text
+  } else if firstKey > 0 {
+    fmt.Printf("ParseCommands: first key starts at %d\n", firstKey)
     cmdText = text[:firstKey-1]
     kvText = text[firstKey:]
   } else {
     // There doesn't appear to be any kv pairs.
+    fmt.Printf("ParseCommands: No KV pairs\n")
     cmdText = text
     kvText = ""
   }
@@ -225,15 +231,16 @@ func FindStartOfNextKey(text string) int {
     return -1
   }
 
+  // skip over any white space
   for i--; i > 0; i-- {
-    if t[i] != ' ' {
+    if t[i] != ' ' && t[i] != '\n' && t[i] != '\r'  && t[i] != '\f' {
       break
     }
   }
 
   // Now skip the key
   for {
-    if i == 1 {
+    if i == 0 {
       break
     }
     if t[i - 1] == ' ' {
