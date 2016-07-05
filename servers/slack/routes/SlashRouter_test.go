@@ -2,27 +2,22 @@ package routes
 
 import (
   "testing"
-)
 
-var testData = map[string]interface {} {
-  "test.some.stuff": "Help for test some stuff",
-}
+  "github.com/stretchr/testify/assert"
+  "github.com/stretchr/testify/require"
+)
+const helpPath = "../../../help/help.hcl"
+const testKey = "test.some.stuff"
+const testValue = "Help for test some stuff"
 
 func TestParseHelpText(t *testing.T) {
-  out, err := ParseHelpText("../../../help/help.hcl")
-  if err != nil {
-    t.Errorf("Epic fail!! %v", err)
-    return
-  }
+  out, err := ParseHelpText(helpPath)
+  require.Nil(t, err, "Epic fail!! ParseHelpText returned an error: %v", err)
+
   t.Logf("out: %#v", out)
-  var (
-    txt interface{}
-    ok bool
-  )
-  if txt, ok = out["test.some.stuff"]; !ok {
-    t.Error("Epic fail!! No value found for [test.some.stuff]")
-  }
-  if txt != testData["test.some.stuff"]{
-    t.Errorf("Epic fail!! Wrong value found for [test.some.stuff] %s", txt)
-  }
+
+  txt := out["test.some.stuff"];
+
+  assert.Equal(t, testValue, txt.(string),
+    "Epic fail!! ParseHelpText: value found for [%s] %s", testKey, txt)
 }

@@ -16,7 +16,7 @@ import (
 )
 
 func DevHub(config *config.Config, sReq *slack.Request) (*slack.Response, *StatusError) {
-
+  log.Printf("DevHub was called")
   command, err := sReq.TextToCommand()
   if err != nil {
     return nil, &StatusError{http.StatusInternalServerError, err}

@@ -91,18 +91,22 @@ func HelpResponse(config *config.Config, command *slack.DevHubCommand) *slack.Re
   var text string
   // If the only command is help, then return the top level help
   if cLen == 1 && command.Commands[0] == "help" {
-    text = helpResponses["/"].(string)
+    if tryit, ok := helpResponses["base"]; ok {
+      text = tryit.(string)
+    }
   } else {
     // Create the help lookup key, by joining all the commands except the last
     // one, which should be "help"
     key := strings.Join(command.Commands[:cLen - 1], ".")
-    t, ok := helpResponses[key].(string)
+    t, ok := helpResponses[key]
     if !ok {
       // No help for this command.  Just return the top level help.
       log.Printf("Help request received for %s, but no help found\n", key)
-      text = helpResponses["/"].(string)
+      if tryit, ok := helpResponses["base"]; ok {
+        text = tryit.(string)
+      }
     } else {
-      text = t
+      text = t.(string)
     }
   }
 
@@ -119,8 +123,15 @@ func ImportHelpText(config *config.Config) {
   }
 
   helpPath := filepath.Join(config.GetString("APP_ROOT"), "help", "help.hcl" )
+  log.Printf("Reading help from %s", helpPath)
   var err error
-  if helpResponses, err = ParseHelpText(helpPath); err != nil {
+  helpResponses, err = ParseHelpText(helpPath)
+  if err != nil {
+    log.Printf("Error parsing help file: ", err)
+    helpResponses = make(map[string]interface{})
+  }
+  if helpResponses == nil {
+    log.Printf("Error parsing help file. No map returned: ", helpResponses)
     helpResponses = make(map[string]interface{})
   }
 }
