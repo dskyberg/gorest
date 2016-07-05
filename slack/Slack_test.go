@@ -5,7 +5,7 @@ import (
   "reflect"
 )
 
-/*
+
 func TestParseCommands_1Command_0KV(t *testing.T) {
   t.Log("ParseCommands: 1 command, 0 KVs")
   startingText := "cmd1"
@@ -384,7 +384,6 @@ func TestTextToCommand_0Commands_2_KV(t *testing.T) {
     t.Error("DeepEqual failed.")
   }
 }
-*/
 
 func TestTextToCommand_0Commands_2_KV_White(t *testing.T) {
   t.Log("TextToCommand: 0 commands, 2 KV with white space")

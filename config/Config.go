@@ -20,13 +20,13 @@ type Config struct {
 // The fileName should NOT have an extension.  Viper automatically
 // searches for the files of the types it supports.  Which includes
 // json, yaml, toml, props, properties, etc..
-func New(fileName string, appName string) *Config {
+func New(fileName string, defaults map[string]interface{}) *Config {
 
   var path string
   var config string
   if fileName == "" {
     path = "."
-    config = appName
+    config = "config"
   } else {
     path, config = ParseConfig(fileName)
   }
@@ -34,9 +34,11 @@ func New(fileName string, appName string) *Config {
   log.Printf("Loading config file: [%s]  from [%s]", config, path)
 
   v := viper.New()
-  v.SetDefault("APP_NAME", appName)
-  v.SetDefault("APP_PORT", 8080)
-  v.SetDefault("ADMIN_PORT", 8001)
+
+  // Load the defaults
+  for key, value := range defaults {
+    v.SetDefault(key, value)
+  }
 
   v.SetConfigName(config)
 
@@ -68,6 +70,8 @@ func Key(pre string, key string) string {
   return buffer.String()
 }
 
+// ParseConfig breaks the provided fileName into a path, base name,
+// and file type (based on the file ext, if present)
 func ParseConfig(fileName string) (string, string) {
 
   path := filepath.Dir(fileName)
@@ -80,8 +84,10 @@ func ParseConfig(fileName string) (string, string) {
   } else {
     config = base
   }
+
   return path, config
 }
+
 
 func (c *Config) Get(key string) interface{} {
   return c.v.Get(key)
