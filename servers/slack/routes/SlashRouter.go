@@ -47,7 +47,8 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
   }
   log.Printf("Received Slack slash command: %#v", command)
   // First see if this is a help request.  If so, return a help response
-  if command.Commands[len(command.Commands)-1] == "help" {
+  if (len(command.Commands) == 0 && len(command.Params) == 0) ||
+    command.Commands[len(command.Commands)-1] == "help" {
     rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
     response := HelpResponse(config, command)
     if err := json.NewEncoder(rw).Encode(response); err != nil {

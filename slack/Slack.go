@@ -115,10 +115,6 @@ const KV_DELIM = "="
 func (sReq *Request) TextToCommand() (*DevHubCommand, error) {
   // Trim the string first, to remove any unwanted spaces and new lines
   t := strings.Trim(sReq.Text, TRIM_CUTSET)
-  if len(t) == 0 {
-    err := errors.New("Error parsing DevHub command: Empty string")
-    return nil, err
-  }
 
   // Get the set of commands, and whatever text may be remaining after the commands
   commands, kvText := ParseCommands(t)
@@ -132,23 +128,23 @@ func (sReq *Request) TextToCommand() (*DevHubCommand, error) {
 
 // ParseCommands is a helper function that parses out any commands that are
 // placed before the Key/Value pairs in the provided text.
+// Note, if there are no commands AND no KV pairs, ParseCommands will return
+// an empty string for kvText.
 func ParseCommands(text string) ([]string, string) {
   // Grab everything up to the first key
   var cmdText string
   var kvText string
+  commands := make([]string, 0, 10)
   firstKey := FindStartOfNextKey(text)
 
   if firstKey == 0 {
     // There are KV's but no commands
-    fmt.Print("ParseCommands: first key starts at 0\n")
-    return nil, text
+    return commands, text
   } else if firstKey > 0 {
-    fmt.Printf("ParseCommands: first key starts at %d\n", firstKey)
     cmdText = text[:firstKey-1]
     kvText = text[firstKey:]
   } else {
     // There doesn't appear to be any kv pairs.
-    fmt.Printf("ParseCommands: No KV pairs\n")
     cmdText = text
     kvText = ""
   }
@@ -157,7 +153,6 @@ func ParseCommands(text string) ([]string, string) {
   for i := 0; i < len(tmp); i++ {
     tmp[i] = strings.Trim(tmp[i], TRIM_CUTSET)
   }
-  var commands []string
   for _, x := range tmp {
     if len(x) > 0 {
       commands = append(commands, x)
@@ -184,7 +179,7 @@ func ParseKeyValuePairs(kvText string) (map[string]string, error) {
 
     if len(kvText) == 0 {
       err := errors.New(fmt.Sprintf("Error parsing Key Value pairs: No remainder for key: %s ", k ))
-      return nil, err
+      return kv, err
     }
 
     j := FindStartOfNextKey(kvText)
