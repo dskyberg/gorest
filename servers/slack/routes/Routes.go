@@ -23,4 +23,10 @@ var RouteSet = router.Routes{
     "/cmd",
     SlashRouter,
   },
+  router.Route {
+    "SlashCommand",
+    "POST",
+    "/slack",
+    SlashRouter,
+  },
 }
