@@ -32,15 +32,18 @@ var helpResponses map[string]interface{}
 func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Request) error {
 
   if err := req.ParseForm(); err != nil {
-      return StatusError{http.StatusBadRequest, err}
+      return StatusError{http.StatusBadRequest,
+        errors.New(fmt.Sprintf("Could not parse form data: %#v", err.Error()))}
   }
 
   sReq := &slack.Request{}
 
   if err := decoder.Decode(sReq, req.PostForm); err != nil {
-    return StatusError{http.StatusBadRequest, err}
+    return StatusError{http.StatusBadRequest,
+      errors.New(fmt.Sprintf("Unrecognized content: %#v", err.Error()))}
   }
-
+  sReq.Log()
+  
   command, err := sReq.TextToCommand()
   if err != nil {
     return StatusError{http.StatusInternalServerError, err}
@@ -62,7 +65,8 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
   // quick response.  The goroutine can send the response as a POST
   // request to the response_url listed in the sReq.
   if sReq.Token != config.GetString("SLACK_TOKEN") {
-    return StatusError{http.StatusUnauthorized, errors.New("Not authorized. Wrong Slack Token.")}
+    return StatusError{http.StatusUnauthorized,
+      errors.New("Not authorized. Wrong Slack Token.")}
   }
   if handler, ok := commandRouter[sReq.Command]; ok {
     response, statusErr := handler.Handler(config, sReq)
@@ -71,11 +75,13 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
     }
     rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
     if err := json.NewEncoder(rw).Encode(response); err != nil {
-      return StatusError{http.StatusInternalServerError, err}
+      return StatusError{http.StatusInternalServerError,
+        errors.New(fmt.Sprintf("Failure while encoding response data: %#v", err.Error()))}
     }
     return nil
   } else {
-    return StatusError{http.StatusBadRequest, errors.New(fmt.Sprintf("Command not found [%s]", sReq.Command))}
+    return StatusError{http.StatusBadRequest,
+      errors.New(fmt.Sprintf("Command not found [%s]", sReq.Command))}
   }
 
 }

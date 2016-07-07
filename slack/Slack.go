@@ -4,6 +4,7 @@ package slack
 
 import (
   "fmt"
+  "log"
   "strings"
   "errors"
 )
@@ -31,6 +32,11 @@ type Request struct {
   // If the time to respond to the command is long, the response can be
   // sent to this url, instead ofo in the initial response.
   ResponseUrl string `schema:"response_url"`
+}
+
+func (r *Request) Log() {
+  log.Printf("token: [%s] team_id: [%s] team_domain: [%s] channel_id: [%s] channel_name: [%s] user_id: [%s] user_name: [%s] command: [%s] text: [%s] response_url: [%s]",
+    r.Token, r.TeamId, r.TeamDomain, r.ChannelId, r.ChannelName, r.UserId, r.UserName, r.Command, r.Text, r.ResponseUrl)
 }
 
 // InChannel tells Slack the response should be placed in the channel for all
