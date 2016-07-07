@@ -78,7 +78,7 @@ var requestCommands = map[string]RequestCommand {
       UserId: "U2147483697",
       UserName: "Steve",
       Command: "/devhub",
-      Text: "  \n \n\n cmd1  \n \n\n ",
+      Text: "  \n \r\n cmd1  \n \r\n ",
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
@@ -114,7 +114,7 @@ var requestCommands = map[string]RequestCommand {
       UserId: "U2147483697",
       UserName: "Steve",
       Command: "/devhub",
-      Text: "  \n \n\n cmd1  \n \n\n   \n \n\n cmd2  \n \n\n ",
+      Text: "  \n \n\n cmd1  \n \r\n   \n \r\n cmd2  \n \r\n ",
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {

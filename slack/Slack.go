@@ -8,6 +8,21 @@ import (
   "strings"
   "errors"
 )
+
+/*
+2016/07/07 23:08:41
+token: [5XhdiDjSY9C9EwCjVS5LwKpv]
+team_id: [T0A06JCCQ]
+team_domain: [confyrm]
+channel_id: [C1PMNSN2Z]
+channel_name: [test]
+user_id: [U0A06NUP5]
+user_name: [david]
+command: [/devhub]
+text: [help]
+response_url: [https://hooks.slack.com/commands/T0A06JCCQ/57857840896/QTIerV9ZtswZHS36ijsav2Kr]
+*/
+
 // The Slack Request that is sent by Slack to a custom app.
 type Request struct {
   // The token that was used by Slack.  This should be validated against
@@ -155,7 +170,7 @@ func ParseCommands(text string) ([]string, string) {
     kvText = ""
   }
   // Read the list of commands first
-  tmp := strings.Split(cmdText, " ")
+  tmp := strings.Fields(cmdText)
   for i := 0; i < len(tmp); i++ {
     tmp[i] = strings.Trim(tmp[i], TRIM_CUTSET)
   }
