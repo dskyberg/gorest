@@ -121,14 +121,14 @@ func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHub
   if issue.Assignee == nil {
     assignee = ""
   } else {
-    assignee = fmt.Sprintf("<%s|%s>", issue.Assignee.HTMLURL, issue.Assignee.Name)
+    assignee = fmt.Sprintf("<%s|%s>", *issue.Assignee.HTMLURL, *issue.Assignee.Name)
   }
-  createdBy := fmt.Sprintf("<%s|%s>", issue.User.HTMLURL, issue.User.Name)
+  createdBy := fmt.Sprintf("<%s|%s>", *issue.User.HTMLURL, *issue.User.Name)
   var milestone string
   if issue.Milestone == nil {
     milestone = ""
   } else {
-    milestone = fmt.Sprintf("%d",issue.Milestone.Number)
+    milestone = fmt.Sprintf("%d", *issue.Milestone.Number)
   }
   var atts = slack.Attachments {
     slack.Attachment {
