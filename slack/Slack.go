@@ -66,8 +66,8 @@ const (
   InChannel
 )
 var ResponseTypes = []string {
-  "Ephemeral",
-  "InChannel",
+  "ephemeral",
+  "in_hannel",
 }
 func (r ResponseType) String() string {
   return ResponseTypes[r - 1]
@@ -120,6 +120,7 @@ type Attachment struct {
 
   // Table fields
   Fields AttachmentFields `json:"fields, omitempty"`
+  MarkdownIn []string `json:"mrkdwn_in, omitempty"`
 }
 
 // Helper type for a slick of Attachments.

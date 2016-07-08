@@ -116,19 +116,37 @@ func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHub
   } else {
     body = ""
   }
+  var assignee string
+
+  if issue.Assignee == nil {
+    assignee = ""
+  } else {
+    assignee = fmt.Sprintf("<%s|%s>", issue.Assignee.HTMLURL, issue.Assignee.Name)
+  }
+  createdBy := fmt.Sprintf("<%s|%s>", issue.User.HTMLURL, issue.User.Name)
+  var milestone string
+  if issue.Milestone == nil {
+    milestone = ""
+  } else {
+    milestone = fmt.Sprintf("%d",issue.Milestone.Number)
+  }
   var atts = slack.Attachments {
     slack.Attachment {
-      Title: fmt.Sprintf("#%d: %s", *issue.Number, *issue.Title),
-      TitleLink: *issue.HTMLURL,
+      Fallback: fmt.Sprintf("#%d: %s\n%s", *issue.Number, *issue.HTMLURL, *issue.Title),
+      Title: fmt.Sprintf("<%s|#%d>: %s",*issue.HTMLURL, *issue.Number, *issue.Title),
       Text: body,
       Color: slack.GOOD,
+      MarkdownIn: []string{"title", "text"},
     },
     slack.Attachment {
-      Title: fmt.Sprintf("Created by %s", sReq.UserName),
+      Title: "Details",
+      Text: fmt.Sprintf("- Status: %s\n- Created by %s\n- Assigned: %s\n- Milestone: %s",
+        issue.State, createdBy, assignee, milestone),
+      MarkdownIn: []string{"title", "text"},
     },
   }
-  title := "New Issue created"
-  response := slack.Response{slack.InChannel.String(), &title, atts}
+  title := "Get Issue"
+  response := slack.Response{slack.Ephemeral.String(), &title, atts}
   return &response, nil
 }
 
@@ -175,10 +193,10 @@ func HandleNew(sReq *slack.Request, config *config.Config, command *slack.DevHub
       Color: slack.GOOD,
     },
     slack.Attachment {
-      Title: fmt.Sprintf("Created by %s", sReq.UserName),
+      Title: fmt.Sprintf("Created by <@%s|%s>",  issue.User.Name),
     },
   }
-  title := "New Issue created"
+  title := fmt.Sprintf("<@%s|%s> created a new issue!", sReq.UserId, sReq.UserName)
   response := slack.Response{slack.InChannel.String(), &title, atts}
   return &response, nil
 }
