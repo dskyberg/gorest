@@ -121,9 +121,11 @@ func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHub
   if issue.Assignee == nil {
     assignee = ""
   } else {
-    assignee = fmt.Sprintf("<%s|%s>", *issue.Assignee.HTMLURL, *issue.Assignee.Name)
+    assg := *issue.Assignee
+    assignee = fmt.Sprintf("<%s|%s>", *assg.HTMLURL, *assg.Login)
   }
-  createdBy := fmt.Sprintf("<%s|%s>", *issue.User.HTMLURL, *issue.User.Name)
+  createdBy := fmt.Sprintf("<%s|%s>", *issue.User.HTMLURL, *issue.User.Login)
+
   var milestone string
   if issue.Milestone == nil {
     milestone = ""
@@ -141,7 +143,7 @@ func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHub
     slack.Attachment {
       Title: "Details",
       Text: fmt.Sprintf("- Status: %s\n- Created by %s\n- Assigned: %s\n- Milestone: %s",
-        issue.State, createdBy, assignee, milestone),
+        *issue.State, createdBy, assignee, milestone),
       MarkdownIn: []string{"title", "text"},
     },
   }
