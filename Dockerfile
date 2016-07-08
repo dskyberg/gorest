@@ -1,4 +1,4 @@
-FROM docker.dev.confyrm.com/golang:2
+FROM docker.dev.confyrm.com/golang:3
 
 ENV GOREST_REPO github.com/confyrm/gorest
 ENV APP_ROOT $GOPATH/src/$GOREST_REPO

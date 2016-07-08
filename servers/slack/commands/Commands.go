@@ -10,7 +10,7 @@ import (
 var SlashCommands = Commands {
   Command{
     "/devhub",
-    false,
+    true,
     DevHub,
   },
 }

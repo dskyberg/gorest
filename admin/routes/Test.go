@@ -26,10 +26,10 @@ func Test(config *config.Config, rw http.ResponseWriter, req *http.Request) erro
   // We are just grabbing the body as a string.
   body, err := ioutil.ReadAll(req.Body);
   if err != nil {
-    log.Printf("Admin.Test Error reading request body: %#v\n", err)
+    log.Printf("Admin.Test Error reading request body: %#v\n\n", err)
     return StatusError{http.StatusInternalServerError, err}
   }
   // Just dump the request body to the log.
-  log.Printf("Admin.Test received: %s\n", body)
+  log.Printf("Admin.Test received: %s\n\n", body)
   return nil
 }

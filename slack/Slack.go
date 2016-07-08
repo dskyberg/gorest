@@ -54,14 +54,25 @@ func (r *Request) Log() {
     r.Token, r.TeamId, r.TeamDomain, r.ChannelId, r.ChannelName, r.UserId, r.UserName, r.Command, r.Text, r.ResponseUrl)
 }
 
-// InChannel tells Slack the response should be placed in the channel for all
-// channel members to see.
-const InChannel = "in_channel"
-// Ephemeral tells Slack the response should be displayed only to the user that
-// executed the slash command. For long running commands, consider immediately
-// responding to the user with an Ephemeral response, and use InChannel for the
-// final result.
-const Ephemeral = "ephemeral"
+type ResponseType int
+const (
+  // Ephemeral tells Slack the response should be displayed only to the user that
+  // executed the slash command. For long running commands, consider immediately
+  // responding to the user with an Ephemeral response, and use InChannel for the
+  // final result.
+  Ephemeral ResponseType = 1 + iota
+  // InChannel tells Slack the response should be placed in the channel for all
+  // channel members to see.
+  InChannel
+)
+var ResponseTypes = []string {
+  "Ephemeral",
+  "InChannel",
+}
+func (r ResponseType) String() string {
+  return ResponseTypes[r - 1]
+}
+
 
 // Slash standard green color for attachments.
 const GOOD = "good"
@@ -116,8 +127,8 @@ type Attachments []Attachment
 
 // The Response must be json encoded.  Response data must be URL encoded, also.
 type Response struct {
-  ResponseType string `json:"response_type"`
-  Text string `json:"text"`
+  Type string `json:"response_type"`
+  Text *string `json:"text"`
   Attachments Attachments `json:"attachments,omitempty"`
 }
 
@@ -126,6 +137,37 @@ type Response struct {
 type DevHubCommand struct {
   Commands []string
   Params map[string]string
+}
+
+func (command *DevHubCommand) CommandsFrom(from int) []string {
+    if from > len(command.Commands) {
+      return []string{}
+    }
+    return command.Commands[from:]
+}
+
+// ValueOrDefault returns either the value from the KV pairs,
+// or the default, if the key is not found
+func (command *DevHubCommand) ValueOrDefault(key string, def string) string {
+  if value, ok := command.Params[key]; ok {
+    return value
+  } else {
+    return def
+  }
+}
+
+// HasValue is a utility function for command.Params
+func (command *DevHubCommand) HasValue(key string) bool {
+  if _, ok := command.Params[key]; ok {
+    return true
+  }
+  return false
+}
+
+// Value is a simple wrapper around command.Params[key]
+func (command *DevHubCommand) Value(key string) (string, bool) {
+  value, ok := command.Params[key]
+  return value, ok
 }
 
 const SLASH_DELIM = " \n"

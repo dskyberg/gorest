@@ -7,6 +7,10 @@ import (
   "golang.org/x/oauth2"
   "github.com/google/go-github/github"
 )
+
+const DefaultOwner = "GITHUB_DEFAULT_OWNER"
+const DefaultRepo = "GITHUB_DEFAULT_REPO"
+
 type GithubClient struct {
     ClientId string
     ClientSecret string

@@ -55,3 +55,19 @@ Viper supports JSON, TOML, YAML, HCL, and Java properties files.  So the file ca
 
 Config variables can be placed in the environment, config the file, or both.  
 Env takes precedence over config file.
+
+## libgit2
+This server uses libgit2 for git support (such as for handling PRs)
+The Mac Homebrew version does not support the latest version of libgit2.
+If you install it, if you get this error:
+
+```
+could not determine kind of name for C.GIT_CHECKOUT_SAFE_CREATE
+```
+So, do this:
+
+```sh
+$ brew unlink libgit2
+$ brew install https://raw.githubusercontent.com/Homebrew/homebrew/d6a9bb6adeb2043c5c5e9ba3a878decdefc1d240/Library/Formula/libgit2.rb
+$ brew switch libgit2 0.22.3
+$ brew pin libgit2

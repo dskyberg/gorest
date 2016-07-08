@@ -8,6 +8,7 @@ import (
   "strings"
   "path/filepath"
   "github.com/fsnotify/fsnotify"
+  "github.com/spf13/cast"
   "github.com/spf13/viper"
 )
 
@@ -88,11 +89,9 @@ func ParseConfig(fileName string) (string, string) {
   return path, config
 }
 
-
 func (c *Config) Get(key string) interface{} {
   return c.v.Get(key)
 }
-
 func (c *Config) GetBool(key string) bool {
   return c.v.GetBool(key)
 }
@@ -120,9 +119,91 @@ func (c *Config) GetTime(key string) time.Time {
 func (c *Config) GetDuration(key string) time.Duration {
   return c.v.GetDuration(key)
 }
+
 func (c *Config) IsSet(key string) bool {
   return c.v.IsSet(key)
 }
+
+func (c *Config) GetOrDefault(key string, def interface{} ) interface{} {
+  if i := c.v.Get(key); i != nil {
+    return i
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetBoolOrDefault(key string, def bool ) bool {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToBool(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetFloat64OrDefault(key string, def float64 ) float64 {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToFloat64(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetIntOrDefault(key string, def int ) int {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToInt(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetStringOrDefault(key string, def string ) string {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToString(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetStringMapOrDefault(key string, def map[string]interface{} ) map[string]interface{} {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToStringMap(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetStringMapStringOrDefault(key string, def map[string]string ) map[string]string {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToStringMapString(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetStringSliceOrDefault(key string, def []string ) []string {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToStringSlice(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetTimeOrDefault(key string, def time.Time ) time.Time {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToTime(i)
+  } else {
+    return def
+  }
+}
+
+func (c *Config) GetDurationOrDefault(key string, def time.Duration ) time.Duration {
+  if i := c.v.Get(key); i != nil {
+    return cast.ToDuration(i)
+  } else {
+    return def
+  }
+}
+
 // If you need to do anything simpler than loading a config, and getting
 // values, then you wil likely want to work directly with the Viper instance.
 func (c *Config) Viper() *viper.Viper {

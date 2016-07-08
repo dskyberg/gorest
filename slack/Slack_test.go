@@ -114,7 +114,7 @@ var requestCommands = map[string]RequestCommand {
       UserId: "U2147483697",
       UserName: "Steve",
       Command: "/devhub",
-      Text: "  \n \n\n cmd1  \n \r\n   \n \r\n cmd2  \n \r\n ",
+      Text: "cmd1\r\ncmd2",
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {

@@ -42,13 +42,15 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
     return StatusError{http.StatusBadRequest,
       errors.New(fmt.Sprintf("Unrecognized content: %#v", err.Error()))}
   }
+  // Dump the slack.Request to the log
   sReq.Log()
-  
+
   command, err := sReq.TextToCommand()
   if err != nil {
     return StatusError{http.StatusInternalServerError, err}
   }
   log.Printf("Received Slack slash command: %#v", command)
+
   // First see if this is a help request.  If so, return a help response
   if (len(command.Commands) == 0 && len(command.Params) == 0) ||
     command.Commands[len(command.Commands)-1] == "help" {
@@ -60,30 +62,65 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
     return nil
   }
 
-  // At this point, we can either process the command and return a
-  // slack.Response, or, we can  kick off a goroutine, and return a
-  // quick response.  The goroutine can send the response as a POST
-  // request to the response_url listed in the sReq.
+  // First authZ test.  Ensure the token provided in the slack request
+  // matches the SLACK_TOKEN
   if sReq.Token != config.GetString("SLACK_TOKEN") {
     return StatusError{http.StatusUnauthorized,
       errors.New("Not authorized. Wrong Slack Token.")}
   }
-  if handler, ok := commandRouter[sReq.Command]; ok {
-    response, statusErr := handler.Handler(config, sReq)
+
+  // Get the route handler for this command
+  route := commandRouter.Route(sReq.Command)
+  if route == nil {
+    // Oops!  No route found.  Must be an unknown command
+    return StatusError {
+      http.StatusBadRequest,
+      fmt.Errorf("Command not found [%s]", sReq.Command),
+    }
+  }
+
+  // At this point, we can either process the command and return a
+  // slack.Response, or, we can kick off a goroutine, and return a
+  // quick, happy response.  The long running command can send its
+  //  response as a POST request to the response_url listed in the sReq.
+  var response *slack.Response
+  if route.IsLong {
+    // Long running command. Kick off a goroutine and return a happy response.
+    go route.Handler(config, sReq, command)
+    // Create a quick response to let the user know the comand is running
+    response = HappyResponse(command)
+  } else {
+    // Short short command.  Just run and return the response.
+    var statusErr error
+    response, statusErr = route.Handler(config, sReq, command)
     if statusErr != nil {
       return statusErr
     }
-    rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
-    if err := json.NewEncoder(rw).Encode(response); err != nil {
-      return StatusError{http.StatusInternalServerError,
-        errors.New(fmt.Sprintf("Failure while encoding response data: %#v", err.Error()))}
-    }
-    return nil
-  } else {
-    return StatusError{http.StatusBadRequest,
-      errors.New(fmt.Sprintf("Command not found [%s]", sReq.Command))}
   }
 
+  // The response is either the returned response from a short running command
+  // handler, or a "command in process" style response.
+  rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
+  if err := json.NewEncoder(rw).Encode(response); err != nil {
+    return StatusError{http.StatusInternalServerError,
+      errors.New(fmt.Sprintf("Failure while encoding response data: %#v", err.Error()))}
+  }
+  return nil
+
+}
+
+// HappyResponse just sends back a "message received" response.  This is
+// Sent when the command is long running, to let the user know that it's running
+func HappyResponse(command *slack.DevHubCommand) *slack.Response {
+  var cmdText string
+  if len(command.Commands) > 0 {
+    cmdText = command.Commands[0]
+  } else {
+    cmdText = ""
+  }
+  text := fmt.Sprintf("Roger that!  Message received!\r\nYour %s request is in process!", cmdText)
+  response := slack.Response{slack.Ephemeral.String(), &text, nil}
+  return &response
 }
 
 // HelpResponse looks up help text from the global helpResponses variable.
@@ -116,7 +153,7 @@ func HelpResponse(config *config.Config, command *slack.DevHubCommand) *slack.Re
     }
   }
 
-  response := slack.Response{slack.Ephemeral, text, nil}
+  response := slack.Response{slack.Ephemeral.String(), &text, nil}
 
   return &response
 }

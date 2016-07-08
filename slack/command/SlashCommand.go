@@ -10,7 +10,7 @@ import (
 // outcome as a string, or it returns a StatusError. If the CommandHandlerFunc
 // is not long running, then the StatusError is returned by the route handler.
 // If the CommandHandlerFunc is long running, then it is simply logged.
-type CommandHandlerFunc func(config *config.Config, sReq *slack.Request) (*slack.Response, *StatusError)
+type CommandHandlerFunc func(config *config.Config, sReq *slack.Request, command *slack.DevHubCommand) (*slack.Response, *StatusError)
 
 // Command, like Route, maps slash commands with command handlers
 type Command struct {
@@ -32,10 +32,17 @@ type Commands []Command
 type CommandRouter map[string]Command
 
 // New turns the set of Commands into a map for lookup
-func (cmds Commands) New() map[string]Command {
+func (cmds Commands) New() CommandRouter {
   m := make(map[string]Command)
   for _, cmd := range cmds {
     m[cmd.Name] = cmd
   }
   return m
+}
+
+func (rtr CommandRouter) Route(command string) *Command {
+  if handler, ok := rtr[command]; ok {
+    return &handler
+  }
+  return nil
 }
