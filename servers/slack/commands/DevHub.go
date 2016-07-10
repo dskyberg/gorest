@@ -4,8 +4,6 @@ import (
   "fmt"
   "log"
   "errors"
-  "strings"
-  "strconv"
   "golang.org/x/oauth2"
   "github.com/google/go-github/github"
   //"gopkg.in/libgit2/git2go.v22"
@@ -68,37 +66,131 @@ func RespondWithError(sReq *slack.Request, err error) {
   }
 }
 
-func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHubCommand) (*slack.Response, error) {
+func ValidateNumber(command *slack.DevHubCommand) (int, error) {
+  // Validate that we have all required data
+  if value, ok := command.ValueToInt("number"); ok {
+    return value, nil
+  }
+  remaining := command.CommandsFrom(1)
+  if value, ok := remaining.ValueToInt(0); ok {
+    return value, nil
+  }
+  return -1, fmt.Errorf("Issue number was not provided")
+}
 
-  // Look in the command for the owner and repo.  If none are provided, and no
-  // default was provided in the config, then it's an error
+// ValidateOwnerAndRepo looks in the command for the owner and repo.
+// If none are provided, and no default was provided in the config, then it's an error
+func ValidateOwnerAndRepo(config *config.Config, command *slack.DevHubCommand) (string, string, error) {
   owner := config.GetString(githubclient.DefaultOwner)
   if len(owner) == 0 {
-    return nil, errors.New("Could not find a GitHub owner in the command or the config")
+    return "", "", errors.New("Could not find a GitHub owner in the command or the config")
   }
   repo := command.ValueOrDefault("repo", config.GetString(githubclient.DefaultRepo))
   if len(repo) == 0 {
-    return nil, errors.New("Could not find a GitHub repo in the command or the config")
+    return "", "", errors.New("Could not find a GitHub repo in the command or the config")
+  }
+  return owner, repo, nil
+}
+
+// Following are a set of utility functions to ensure consistent, safe Access
+// to Issue components.  For details on Issue:
+// https://godoc.org/github.com/google/go-github/github#IssuesService.Get
+// https://github.com/google/go-github/blob/master/github/issues.go
+
+func GetSafeString(ptr *string) string {
+  if ptr != nil {
+    return *ptr
+  } else {
+    return ""
+  }
+}
+func GetSafeInt(ptr *int) int {
+  if ptr != nil {
+    return *ptr
+  } else {
+    return -1
+  }
+}
+
+func SafeItoA(ptr *string) string {
+  i := GetSafeString(ptr)
+  if len(i) > 0 {
+    return fmt.Sprintf("%d", i)
+  } else {
+    return i
+  }
+}
+
+func MakeUserLink(user *github.User) string {
+  if user == nil {
+    return ""
+  } else {
+    var name string
+    if user.Name == nil {
+      if user.Login == nil {
+        return ""
+      } else {
+        name = *user.Login
+      }
+    } else {
+      name = *user.Name
+    }
+    if user.HTMLURL == nil {
+      return ""
+    }
+    return fmt.Sprintf("<%s|%s>", *user.HTMLURL, name)
+  }
+}
+func SafeMilestoneTitleAndNumber(milestone *github.Milestone) (string, int) {
+  if milestone == nil {
+    return "", -1
+  }
+  title := GetSafeString(milestone.Title)
+  number := GetSafeInt(milestone.Number)
+  return title, number
+}
+func FormatBasicIssue(issue *github.Issue) slack.Attachment {
+  issueNumber := GetSafeInt(issue.Number)
+  issueBody := GetSafeString(issue.Body)
+  issueUrl := GetSafeString(issue.HTMLURL)
+  issueTitle := GetSafeString(issue.Title)
+
+  att := slack.Attachment {
+    Title: fmt.Sprintf("<%s|#%d>: %s", issueUrl, issueNumber, issueTitle),
+    Fallback: fmt.Sprintf("#%d: %s\n%s", issueNumber, issueUrl, issueTitle),
+    Text: issueBody,
+    Color: slack.GOOD,
+    MarkdownIn: []string{"title", "text"},
+  }
+  return att
+}
+
+func FormatIssueDetails(issue *github.Issue) slack.Attachment {
+
+  issueState := GetSafeString(issue.State)
+  createdBy := MakeUserLink(issue.User)
+  assignee := MakeUserLink(issue.Assignee)
+  milestoneTitle, _ := SafeMilestoneTitleAndNumber(issue.Milestone)
+
+  att := slack.Attachment {
+    Title: "Details",
+    Text: fmt.Sprintf("- Status: %s\n- Created by %s\n- Assigned: %s\n- Milestone: %s",
+      issueState, createdBy, assignee, milestoneTitle),
+    MarkdownIn: []string{"title", "text"},
+  }
+  return att
+}
+func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHubCommand) (*slack.Response, error) {
+
+  owner, repo, err := ValidateOwnerAndRepo(config, command)
+  if err != nil {
+    return nil, err
   }
 
   // Validate that we have all required data
-  var numberStr string
-  if value, ok := command.Value("number"); ok {
-    numberStr = value
-  } else {
-    remaining := command.CommandsFrom(1)
-    if len(remaining) == 0 {
-      // Number was not provided as a KV value, or in the
-      // list of Commands.
-      return nil, fmt.Errorf("Issue number was not provided")
-    }
-    // Make sure it's an int
-    numberStr = remaining[0]
-  }
-  number, err := strconv.Atoi(numberStr)
+  number, err := ValidateNumber(command)
   if err != nil {
-    // Couldn't parse the provided number
-    return nil, fmt.Errorf("Value provided for number was not an int: %s", numberStr)
+    return nil, err
   }
 
   client := NewGithubClient(config)
@@ -108,44 +200,11 @@ func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHub
     errr := fmt.Errorf("Issue fetch failed with %s", err.Error())
     return nil, errr
 	}
-  log.Printf("Issue fetched: %+v\n\n", *issue)
 
-  var body string
-  if issue.Body == nil || len(*issue.Body) > 0 {
-    body = *issue.Body
-  } else {
-    body = ""
-  }
-  var assignee string
 
-  if issue.Assignee == nil {
-    assignee = ""
-  } else {
-    assg := *issue.Assignee
-    assignee = fmt.Sprintf("<%s|%s>", *assg.HTMLURL, *assg.Login)
-  }
-  createdBy := fmt.Sprintf("<%s|%s>", *issue.User.HTMLURL, *issue.User.Login)
-
-  var milestone string
-  if issue.Milestone == nil {
-    milestone = ""
-  } else {
-    milestone = fmt.Sprintf("%d", *issue.Milestone.Number)
-  }
-  var atts = slack.Attachments {
-    slack.Attachment {
-      Fallback: fmt.Sprintf("#%d: %s\n%s", *issue.Number, *issue.HTMLURL, *issue.Title),
-      Title: fmt.Sprintf("<%s|#%d>: %s",*issue.HTMLURL, *issue.Number, *issue.Title),
-      Text: body,
-      Color: slack.GOOD,
-      MarkdownIn: []string{"title", "text"},
-    },
-    slack.Attachment {
-      Title: "Details",
-      Text: fmt.Sprintf("- Status: %s\n- Created by %s\n- Assigned: %s\n- Milestone: %s",
-        *issue.State, createdBy, assignee, milestone),
-      MarkdownIn: []string{"title", "text"},
-    },
+  atts := slack.Attachments {
+    FormatBasicIssue(issue),
+    FormatIssueDetails(issue),
   }
   title := "Get Issue"
   response := slack.Response{slack.Ephemeral.String(), &title, atts}
@@ -155,15 +214,9 @@ func HandleGet(sReq *slack.Request, config *config.Config, command *slack.DevHub
 // HandleNew creates a new GitHub issue, using the Key/Value data in the DevHubCommand
 func HandleNew(sReq *slack.Request, config *config.Config, command *slack.DevHubCommand) (*slack.Response, error) {
 
-  // Look in the command for the owner and repo.  If none are provided, and no
-  // default was provided in the config, then it's an error
-  owner := config.GetString(githubclient.DefaultOwner)
-  if len(owner) == 0 {
+  owner, repo, err := ValidateOwnerAndRepo(config, command)
+  if err != nil {
     return nil, errors.New("Could not find a GitHub owner in the command or the config")
-  }
-  repo := command.ValueOrDefault("repo", config.GetString(githubclient.DefaultRepo))
-  if len(repo) == 0 {
-    return nil, errors.New("Could not find a GitHub repo in the command or the config")
   }
 
   // Validate that we have all required data
@@ -179,29 +232,80 @@ func HandleNew(sReq *slack.Request, config *config.Config, command *slack.DevHub
     errr := fmt.Errorf("Issue creation failed with %s", err.Error())
     return nil, errr
 	}
-  log.Printf("Issue created: %+v", *issue)
 
-  var body string
-  if issue.Body == nil || len(*issue.Body) > 0 {
-    body = *issue.Body
-  } else {
-    body = ""
-  }
-  var atts = slack.Attachments {
-    slack.Attachment {
-      Title: fmt.Sprintf("#%d: %s", *issue.Number, *issue.Title),
-      TitleLink: *issue.HTMLURL,
-      Text: body,
-      Color: slack.GOOD,
-    },
-    slack.Attachment {
-      Title: fmt.Sprintf("Created by <@%s|%s>",  issue.User.Name),
-    },
+  atts := slack.Attachments {
+    FormatBasicIssue(issue),
   }
   title := fmt.Sprintf("<@%s|%s> created a new issue!", sReq.UserId, sReq.UserName)
   response := slack.Response{slack.InChannel.String(), &title, atts}
   return &response, nil
 }
+
+// HandleClose creates a new GitHub issue, using the Key/Value data in the DevHubCommand
+func HandleClose(sReq *slack.Request, config *config.Config, command *slack.DevHubCommand) (*slack.Response, error) {
+
+  owner, repo, err := ValidateOwnerAndRepo(config, command)
+  if err != nil {
+    return nil, err
+  }
+
+  // Validate that we have all required data
+  number, err := ValidateNumber(command)
+  if err != nil {
+    return nil, err
+  }
+
+  client := NewGithubClient(config)
+  closeCommand := slack.DevHubCommand {slack.Commands{}, slack.KVPairs{"state":"closed"}}
+  input := TextToIssueRequest( &closeCommand)
+
+  issue, _, err := client.Issues.Edit(owner, repo, number, input)
+	if err != nil {
+    errr := fmt.Errorf("Issue fetch failed with %s", err.Error())
+    return nil, errr
+	}
+
+  atts := slack.Attachments {
+    FormatBasicIssue(issue),
+    FormatIssueDetails(issue),
+  }
+  title := "Update Issue"
+  response := slack.Response{slack.Ephemeral.String(), &title, atts}
+  return &response, nil
+}
+
+// HandleUpdate creates a new GitHub issue, using the Key/Value data in the DevHubCommand
+func HandleUpdate(sReq *slack.Request, config *config.Config, command *slack.DevHubCommand) (*slack.Response, error) {
+
+  owner, repo, err := ValidateOwnerAndRepo(config, command)
+  if err != nil {
+    return nil, err
+  }
+
+  // Validate that we have all required data
+  number, err := ValidateNumber(command)
+  if err != nil {
+    return nil, err
+  }
+
+  client := NewGithubClient(config)
+  input := TextToIssueRequest(command)
+
+  issue, _, err := client.Issues.Edit(owner, repo, number, input)
+	if err != nil {
+    errr := fmt.Errorf("Issue fetch failed with %s", err.Error())
+    return nil, errr
+	}
+
+  atts := slack.Attachments {
+    FormatBasicIssue(issue),
+    FormatIssueDetails(issue),
+  }
+  title := "Update Issue"
+  response := slack.Response{slack.Ephemeral.String(), &title, atts}
+  return &response, nil
+}
+
 
 // NewGithubClient is a utility function that uses the GITHUB_TOKEN from
 // the config to create a GitHub client.
@@ -238,14 +342,14 @@ func TextToIssueRequest(command *slack.DevHubCommand) *github.IssueRequest {
     input.Body = &i
   }
 
-  if i, ok := command.Value("labels"); ok {
-    s := strings.Split(i, ",")
-    if len(s) > 0 {
-      for j := 0; j < len(s); j++ {
-        s[j] = strings.Trim(s[j], " \n")
-      }
-      input.Labels = &s
-    }
+  if i, ok := command.Values("labels"); ok {
+    input.Labels = &i
+  }
+  if i, ok := command.Value("state"); ok {
+    input.State = &i
+  }
+  if i, ok := command.ValueToInt("milestone"); ok {
+    input.Milestone = &i
   }
   return input
 }

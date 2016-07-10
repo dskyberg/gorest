@@ -7,6 +7,8 @@ import (
   "log"
   "strings"
   "errors"
+
+  "github.com/spf13/cast"
 )
 
 /*
@@ -132,19 +134,35 @@ type Response struct {
   Text *string `json:"text"`
   Attachments Attachments `json:"attachments,omitempty"`
 }
-
+type Commands []string
 // The Slack slash commands that we process contain a consistent structure that
 // can be leveraged for any type of activity.
+type KVPairs map[string]string
+
 type DevHubCommand struct {
-  Commands []string
-  Params map[string]string
+  Commands Commands
+  Params KVPairs
 }
 
-func (command *DevHubCommand) CommandsFrom(from int) []string {
+func (command *DevHubCommand) CommandsFrom(from int) Commands {
     if from > len(command.Commands) {
-      return []string{}
+      return Commands{}
     }
     return command.Commands[from:]
+}
+
+func (commands Commands) Value(i int) (string, bool) {
+  if len(commands) > i {
+    return commands[i], true
+  }
+    return "", false
+}
+
+func (commands Commands) ValueToInt(i int) (int, bool) {
+  if len(commands) > i {
+    return cast.ToInt(commands[i]), true
+  }
+    return -1, false
 }
 
 // ValueOrDefault returns either the value from the KV pairs,
@@ -157,6 +175,37 @@ func (command *DevHubCommand) ValueOrDefault(key string, def string) string {
   }
 }
 
+// Value is a simple wrapper around command.Params[key]
+func (command *DevHubCommand) Value(key string) (string, bool) {
+  value, ok := command.Params[key]
+  return value, ok
+}
+
+// Value is a simple wrapper around command.Params[key]
+func (command *DevHubCommand) Values(key string) ([]string, bool) {
+  i, ok := command.Params[key]
+
+  values := strings.Split(i, ",")
+  for j := 0; j < len(values); j++ {
+    values[j] = strings.TrimSpace(values[j])
+  }
+  return values, ok
+}
+
+// Value is a simple wrapper around command.Params[key]
+func (command *DevHubCommand) ValueToInt(key string) (int, bool) {
+  value, ok := command.Params[key]
+  return cast.ToInt(value), ok
+}
+
+// Value is a simple wrapper around command.Params[key]
+func (command *DevHubCommand) ValueToIntOrDefault(key string, def int) int {
+  if value, ok := command.Params[key]; ok {
+    return cast.ToInt(value)
+  }
+  return def
+}
+
 // HasValue is a utility function for command.Params
 func (command *DevHubCommand) HasValue(key string) bool {
   if _, ok := command.Params[key]; ok {
@@ -165,11 +214,7 @@ func (command *DevHubCommand) HasValue(key string) bool {
   return false
 }
 
-// Value is a simple wrapper around command.Params[key]
-func (command *DevHubCommand) Value(key string) (string, bool) {
-  value, ok := command.Params[key]
-  return value, ok
-}
+
 
 const SLASH_DELIM = " \n"
 const TRIM_CUTSET = " \n"
@@ -194,7 +239,7 @@ func (sReq *Request) TextToCommand() (*DevHubCommand, error) {
 // placed before the Key/Value pairs in the provided text.
 // Note, if there are no commands AND no KV pairs, ParseCommands will return
 // an empty string for kvText.
-func ParseCommands(text string) ([]string, string) {
+func ParseCommands(text string) (Commands, string) {
   // Grab everything up to the first key
   var cmdText string
   var kvText string
@@ -225,10 +270,10 @@ func ParseCommands(text string) ([]string, string) {
   return commands, kvText
 }
 
-func ParseKeyValuePairs(kvText string) (map[string]string, error) {
+func ParseKeyValuePairs(kvText string) (KVPairs, error) {
   //Split on KV_DELIM.  This will yield an even number of values in s, where
   // s[i] = key, s[i+1] = value
-  kv := make(map[string]string)
+  kv := make(KVPairs)
 
   for x := 0; x < 10; x++ { // Just to prevent infinite loop!
     i := strings.Index(kvText, KV_DELIM)

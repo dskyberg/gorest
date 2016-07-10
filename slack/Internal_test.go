@@ -1,10 +1,10 @@
 package slack
 
 import (
+  "fmt"
   "testing"
-  //"reflect"
-  "github.com/stretchr/testify/assert"
-  "github.com/stretchr/testify/require"
+
+  . "github.com/smartystreets/goconvey/convey"
 )
 
 type RequestCommand struct {
@@ -14,8 +14,9 @@ type RequestCommand struct {
 }
 
 
-var requestCommands = map[string]RequestCommand {
-  "0 commands, 0 KV": RequestCommand {
+var requestCommands = []RequestCommand {
+/*
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -28,12 +29,13 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{},
+      Commands{},
       map[string]string{},
     },
     "",
   },
-  "0 commands, 0 KV with white space": RequestCommand {
+
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -46,12 +48,12 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{},
+      Commands{},
       map[string]string{},
     },
     "",
   },
-  "1 commands, 0 KV": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -64,12 +66,12 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{"cmd1"},
+      Commands{"cmd1"},
       map[string]string{},
     },
     "",
   },
-  "1 commands, 0 KV with white space": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -82,12 +84,12 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{"cmd1"},
+      Commands{"cmd1"},
       map[string]string{},
     },
     "",
   },
-  "2 commands, 0 KV": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -100,12 +102,12 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{"cmd1", "cmd2"},
+      Commands{"cmd1", "cmd2"},
       map[string]string{},
     },
     "",
   },
-  "2 commands, 0 KV with white space": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -118,12 +120,12 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{"cmd1", "cmd2"},
+      Commands{"cmd1", "cmd2"},
       map[string]string{},
     },
     "",
   },
-  "0 commands, 1 KV": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -136,14 +138,14 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{},
+      Commands{},
       map[string]string {
         "title": "test number 7",
       },
     },
     "title=test number 7",
   },
-  "0 commands, 1 KV with white space": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -156,14 +158,14 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{},
+      Commands{},
       map[string]string {
         "title": "test number 7",
       },
     },
     " \n  \n\n title \n  \n\n = \n  \n\n test number 7 \n  \n\n ",
   },
-  "0 commands, 2 KV": RequestCommand {
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -176,7 +178,7 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{},
+      Commands{},
       map[string]string{
         "title": "test number 7",
         "labels": "EPS, somethingElse",
@@ -184,7 +186,8 @@ var requestCommands = map[string]RequestCommand {
     },
     "title=test number 7 labels=EPS, somethingElse",
   },
-  "0 commands, 2 KV with white space": RequestCommand {
+  */
+  RequestCommand {
     Request {
       Token: "abcd1234",
       TeamDomain: "example",
@@ -197,7 +200,7 @@ var requestCommands = map[string]RequestCommand {
       ResponseUrl: "http://localhost:8002/test",
     },
     DevHubCommand {
-      []string{},
+      Commands{},
       map[string]string{
         "title": "test number 7",
         "labels": "EPS, somethingElse",
@@ -208,17 +211,41 @@ var requestCommands = map[string]RequestCommand {
 }
 
 func TestParseCommands(t *testing.T) {
-  for name, rq := range requestCommands {
-    t.Logf("ParseCommands: %s", name)
-
+  for _, rq := range requestCommands {
     commands, kvText := ParseCommands(rq.Request.Text)
-    assert.Equal(t, rq.Command.Commands, commands,
-      "ParseCommands returned the wrong number of commands: %#v", commands)
-    assert.Equal(t, rq.KvText, kvText,
-      "ParseCommands returned the wrong remainder: %s", kvText)
+    kv, err := ParseKeyValuePairs(rq.Request.Text)
+    Convey(fmt.Sprintf("Given the input [%v]", rq.Request.Text), t, func() {
+      Convey(fmt.Sprintf("The commands should be [%v]", rq.Command.Commands), func() {
+        So(commands, ShouldResemble, rq.Command.Commands)
+      })
+      Convey(fmt.Sprintf("The KV Text should be [%v]", rq.KvText), func() {
+        So(kvText, ShouldEqual, rq.KvText)
+      })
+      Convey("err should be nil", func() {
+        So(err, ShouldBeNil)
+      })
+      Convey(fmt.Sprintf("The KV Pairs should be [%v]", rq.Command.Params), func() {
+        So(kv, ShouldEqual, rq.Command.Params)
+      })
+    })
   }
 }
 
+func TestParseKeyValuePairs(t *testing.T) {
+  for _, rq := range requestCommands {
+    kv, err := ParseKeyValuePairs(rq.Request.Text)
+    Convey(fmt.Sprintf("Given the input [%v]", rq.Request.Text), t, func() {
+      Convey("Err should be nil", func() {
+        So(err, ShouldBeNil)
+      })
+      Convey(fmt.Sprintf("The KV Pairs should be [%v]", rq.Command.Params), func() {
+        So(kv, ShouldResemble, rq.Command.Params)
+      })
+    })
+  }
+}
+
+/*
 func TestParseKeyValuePairs(t *testing.T) {
   for name, rq := range requestCommands {
     t.Log("ParseKeyValuePairs: %s", name)
@@ -237,3 +264,4 @@ func TestTextToCommand(t *testing.T) {
     assert.Equal(t, rq.Command, *command, "%s failed.", name)
   }
 }
+*/

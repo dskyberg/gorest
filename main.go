@@ -49,5 +49,5 @@ func SetupConfig() *config.Config {
   // Tell Viper to look for a file called 'config'.  The fileName can
   // be pathed, as well.  In which case, Viper will look in the path and
   // in the current directory '.', in that order.
-  return config.New(configFile, configDefaults)
+  return config.New(&configFile, &configDefaults)
 }
