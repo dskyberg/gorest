@@ -31,6 +31,10 @@ func DevHub(config *config.Config, sReq *slack.Request, command *slack.DevHubCom
       resp, err = HandleNew(sReq, config, command)
     case "get":
       resp, err = HandleGet(sReq, config, command)
+    case "close":
+      resp, err = HandleClose(sReq, config, command)
+    case "update":
+      resp, err = HandleUpdate(sReq, config, command)
     default:
       err = fmt.Errorf("Command not recognized: %s", cmd)
   }
