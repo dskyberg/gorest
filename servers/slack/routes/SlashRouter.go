@@ -6,9 +6,8 @@ import (
   "net/http"
   "fmt"
   "log"
-  "strings"
+	"strings"
   "encoding/json"
-  "github.com/gorilla/schema"
 
   "github.com/confyrm/gorest/slack"
   . "github.com/confyrm/gorest/errors"
@@ -20,7 +19,7 @@ import (
 
 
 // Make a static decoder for performance
-var decoder = schema.NewDecoder()
+
 var commandRouter = SlashCommands.New()
 
 // This is set the first time HelpResponse is called.  It is set by Loading
@@ -30,16 +29,10 @@ var helpResponses help.Help
 // SlashRouter is the top level slash command router.
 func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Request) error {
 
-  if err := req.ParseForm(); err != nil {
-      return StatusError{http.StatusBadRequest,
-        errors.New(fmt.Sprintf("Could not parse form data: %#v", err.Error()))}
-  }
-
   sReq := &slack.Request{}
 
-  if err := decoder.Decode(sReq, req.PostForm); err != nil {
-    return StatusError{http.StatusBadRequest,
-      errors.New(fmt.Sprintf("Unrecognized content: %#v", err.Error()))}
+  if err := sReq.DecodeHttp(req); err != nil {
+    return StatusError{http.StatusBadRequest,  err}
   }
   // Dump the slack.Request to the log
   sReq.Log()
@@ -50,17 +43,6 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
   }
   log.Printf("Received Slack slash command: %#v", command)
 
-  // First see if this is a help request.  If so, return a help response
-  if (len(command.Commands) == 0 && len(command.Params) == 0) ||
-    command.Commands[len(command.Commands)-1] == "help" {
-    rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
-    response := HelpResponse(config, command)
-    if err := json.NewEncoder(rw).Encode(response); err != nil {
-      return StatusError{http.StatusInternalServerError, err}
-    }
-    return nil
-  }
-
   // First authZ test.  Ensure the token provided in the slack request
   // matches the SLACK_TOKEN
   if sReq.Token != config.GetString("SLACK_TOKEN") {
@@ -68,7 +50,17 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
       errors.New("Not authorized. Wrong Slack Token.")}
   }
 
-  // Get the route handler for this command
+	// Look to see if we just need to return some help
+	yes, err := HadHelp(config, command, rw)
+	if err != nil {
+		return StatusError{http.StatusInternalServerError, err}
+	}
+	if yes {
+		// HadHelp send a Help response.  We're done.
+		return nil
+	}
+
+  // Get the route handler for this slash command, such as '/devhub'
   route := commandRouter.Route(sReq.Command)
   if route == nil {
     // Oops!  No route found.  Must be an unknown command
@@ -108,6 +100,21 @@ func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Reques
 
 }
 
+func HadHelp(config *config.Config, command *slack.DevHubCommand, rw http.ResponseWriter) (bool, error) {
+
+	if helpPath, ok := command.HelpPath(); ok {
+    rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
+    response := HelpResponse(config, helpPath)
+    if err := json.NewEncoder(rw).Encode(response); err != nil {
+      return true, StatusError{http.StatusInternalServerError, err}
+    }
+    return true, nil
+  }
+
+	// There was no help to process.
+	return false, nil
+}
+
 // HappyResponse just sends back a "message received" response.  This is
 // Sent when the command is long running, to let the user know that it's running
 func HappyResponse(command *slack.DevHubCommand) *slack.Response {
@@ -124,21 +131,20 @@ func HappyResponse(command *slack.DevHubCommand) *slack.Response {
 
 // HelpResponse looks up help text from the global helpResponses variable.
 // The slice of commands are joined to create the lookup key.
-func HelpResponse(config *config.Config, command *slack.DevHubCommand) *slack.Response {
+func HelpResponse(config *config.Config, commands slack.Commands) *slack.Response {
 
   // Although called every time, this will only attempted to read the help
   // text the first time its called.
   ImportHelpText(config)
 
-  cLen := len(command.Commands)
+	cLen := len(commands)
   var text string
   // If the only command is help, then return the top level help
-  if (cLen == 0) || (cLen == 1 && command.Commands[0] == "help") {
+  if (cLen == 0) {
     text = helpResponses.Base()
   } else {
-    // Create the help lookup key, by joining all the commands except the last
-    // one, which should be "help"
-    key := strings.Join(command.Commands[:cLen - 1], help.Sep)
+    // Create the help lookup key, by joining all the commands
+    key := strings.Join(commands, help.Sep)
     text = helpResponses.Get(key)
   }
 
