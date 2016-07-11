@@ -2,7 +2,6 @@
 package config
 
 import (
-  "fmt"
   "log"
   "bytes"
   "time"
@@ -99,13 +98,11 @@ func Join(sep string, args ...string) string {
 // config will be ""
 // See Config_internal_ParseConfig_test.go for examples
 func ParseConfig(fileNameInput string) (string, string) {
-  fmt.Printf("\nParseConfig: fileNameInput [%s]\n", fileNameInput)
   if len(fileNameInput) == 0 {
     return ".", ""
   }
 
   fileName := filepath.Clean(fileNameInput)
-  fmt.Printf("ParseConfig: fileName [%s]\n", fileName)
   if fileName == "." || fileName == ".." {
     return fileName, ""
   }
@@ -117,13 +114,11 @@ func ParseConfig(fileNameInput string) (string, string) {
   // If there is no path separator, then this is just
   // Dir will return "." for empty fileName
   path := filepath.Dir(fileName)
-  fmt.Printf("ParseConfig: path [%s]\n",path)
 
 
   var config string
   // Short circuit for empty ( == ".") path
   base := filepath.Base(fileName)
-  fmt.Printf("ParseConfig: base [%s]\n",base)
   if base == "." || base == ".."{
     config = ""
   } else {
@@ -135,7 +130,6 @@ func ParseConfig(fileNameInput string) (string, string) {
       config = base
     }
   }
-  fmt.Printf("ParseConfig: config [%s]\n", config)
   return path, config
 }
 

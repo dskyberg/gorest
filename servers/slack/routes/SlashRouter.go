@@ -1,7 +1,6 @@
 package routes
 
 import (
-  "io/ioutil"
 	"path/filepath"
   "errors"
   "net/http"
@@ -10,11 +9,11 @@ import (
   "strings"
   "encoding/json"
   "github.com/gorilla/schema"
-  "github.com/hashicorp/hcl"
 
   "github.com/confyrm/gorest/slack"
   . "github.com/confyrm/gorest/errors"
   "github.com/confyrm/gorest/config"
+    "github.com/confyrm/gorest/help"
   . "github.com/confyrm/gorest/servers/slack/commands"
 )
 
@@ -26,7 +25,7 @@ var commandRouter = SlashCommands.New()
 
 // This is set the first time HelpResponse is called.  It is set by Loading
 // The help text file located in ../../../help/help.hcl
-var helpResponses map[string]interface{}
+var helpResponses help.Help
 
 // SlashRouter is the top level slash command router.
 func SlashRouter(config *config.Config, rw http.ResponseWriter, req *http.Request) error {
@@ -126,6 +125,7 @@ func HappyResponse(command *slack.DevHubCommand) *slack.Response {
 // HelpResponse looks up help text from the global helpResponses variable.
 // The slice of commands are joined to create the lookup key.
 func HelpResponse(config *config.Config, command *slack.DevHubCommand) *slack.Response {
+
   // Although called every time, this will only attempted to read the help
   // text the first time its called.
   ImportHelpText(config)
@@ -133,28 +133,16 @@ func HelpResponse(config *config.Config, command *slack.DevHubCommand) *slack.Re
   cLen := len(command.Commands)
   var text string
   // If the only command is help, then return the top level help
-  if cLen == 1 && command.Commands[0] == "help" {
-    if tryit, ok := helpResponses["base"]; ok {
-      text = tryit.(string)
-    }
+  if (cLen == 0) || (cLen == 1 && command.Commands[0] == "help") {
+    text = helpResponses.Base()
   } else {
     // Create the help lookup key, by joining all the commands except the last
     // one, which should be "help"
-    key := strings.Join(command.Commands[:cLen - 1], ".")
-    t, ok := helpResponses[key]
-    if !ok {
-      // No help for this command.  Just return the top level help.
-      log.Printf("Help request received for %s, but no help found\n", key)
-      if tryit, ok := helpResponses["base"]; ok {
-        text = tryit.(string)
-      }
-    } else {
-      text = t.(string)
-    }
+    key := strings.Join(command.Commands[:cLen - 1], help.Sep)
+    text = helpResponses.Get(key)
   }
 
   response := slack.Response{slack.Ephemeral.String(), &text, nil}
-
   return &response
 }
 
@@ -168,29 +156,8 @@ func ImportHelpText(config *config.Config) {
   helpPath := filepath.Join(config.GetString("APP_ROOT"), "help", "help.hcl" )
   log.Printf("Reading help from %s", helpPath)
   var err error
-  helpResponses, err = ParseHelpText(helpPath)
+  helpResponses, err = help.ParseHelpFile(helpPath)
   if err != nil {
     log.Printf("Error parsing help file: ", err)
-    helpResponses = make(map[string]interface{})
   }
-  if helpResponses == nil {
-    log.Printf("Error parsing help file. No map returned: ", helpResponses)
-    helpResponses = make(map[string]interface{})
-  }
-}
-
-func ParseHelpText(helpPath string) (map[string]interface{}, error) {
-
-  helpText, err := ioutil.ReadFile(helpPath)
-  if err != nil {
-    log.Printf("Could not load help text from %s: %#v", helpPath, err)
-    return nil, err
-  }
-  var out interface{}
-  err = hcl.Decode(&out, string(helpText))
-  if err != nil {
-    log.Printf("Could not parse help text in %s: %#v", helpPath, err)
-    return nil, err
-  }
-  return out.(map[string]interface{}), nil
 }

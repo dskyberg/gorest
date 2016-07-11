@@ -4,6 +4,8 @@ import (
   "fmt"
   "testing"
 
+  //"github.com/stretchr/testify/assert"
+  //"github.com/stretchr/testify/require"
   . "github.com/smartystreets/goconvey/convey"
 )
 
@@ -15,7 +17,7 @@ type RequestCommand struct {
 
 
 var requestCommands = []RequestCommand {
-/*
+
   RequestCommand {
     Request {
       Token: "abcd1234",
@@ -30,7 +32,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{},
-      map[string]string{},
+      KVPairs {},
     },
     "",
   },
@@ -49,7 +51,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{},
-      map[string]string{},
+      KVPairs {},
     },
     "",
   },
@@ -67,7 +69,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{"cmd1"},
-      map[string]string{},
+      KVPairs {},
     },
     "",
   },
@@ -85,7 +87,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{"cmd1"},
-      map[string]string{},
+      KVPairs {},
     },
     "",
   },
@@ -103,7 +105,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{"cmd1", "cmd2"},
-      map[string]string{},
+      KVPairs {},
     },
     "",
   },
@@ -121,7 +123,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{"cmd1", "cmd2"},
-      map[string]string{},
+      KVPairs {},
     },
     "",
   },
@@ -139,7 +141,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{},
-      map[string]string {
+      KVPairs {
         "title": "test number 7",
       },
     },
@@ -159,7 +161,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{},
-      map[string]string {
+      KVPairs {
         "title": "test number 7",
       },
     },
@@ -179,14 +181,14 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{},
-      map[string]string{
+      KVPairs {
         "title": "test number 7",
         "labels": "EPS, somethingElse",
       },
     },
     "title=test number 7 labels=EPS, somethingElse",
   },
-  */
+
   RequestCommand {
     Request {
       Token: "abcd1234",
@@ -201,7 +203,7 @@ var requestCommands = []RequestCommand {
     },
     DevHubCommand {
       Commands{},
-      map[string]string{
+      KVPairs {
         "title": "test number 7",
         "labels": "EPS, somethingElse",
       },
@@ -210,10 +212,10 @@ var requestCommands = []RequestCommand {
   },
 }
 
+
 func TestParseCommands(t *testing.T) {
   for _, rq := range requestCommands {
     commands, kvText := ParseCommands(rq.Request.Text)
-    kv, err := ParseKeyValuePairs(rq.Request.Text)
     Convey(fmt.Sprintf("Given the input [%v]", rq.Request.Text), t, func() {
       Convey(fmt.Sprintf("The commands should be [%v]", rq.Command.Commands), func() {
         So(commands, ShouldResemble, rq.Command.Commands)
@@ -221,15 +223,10 @@ func TestParseCommands(t *testing.T) {
       Convey(fmt.Sprintf("The KV Text should be [%v]", rq.KvText), func() {
         So(kvText, ShouldEqual, rq.KvText)
       })
-      Convey("err should be nil", func() {
-        So(err, ShouldBeNil)
-      })
-      Convey(fmt.Sprintf("The KV Pairs should be [%v]", rq.Command.Params), func() {
-        So(kv, ShouldEqual, rq.Command.Params)
-      })
     })
   }
 }
+
 
 func TestParseKeyValuePairs(t *testing.T) {
   for _, rq := range requestCommands {

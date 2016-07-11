@@ -216,8 +216,7 @@ func (command *DevHubCommand) HasValue(key string) bool {
 
 
 
-const SLASH_DELIM = " \n"
-const TRIM_CUTSET = " \n"
+const TRIM_CUTSET = " \r\n"
 const KV_DELIM = "="
 
 
@@ -312,7 +311,7 @@ func ParseKeyValuePairs(kvText string) (KVPairs, error) {
 
 
 func FindStartOfNextKey(text string) int {
-  t := strings.TrimLeft(text, SLASH_DELIM)
+  t := strings.TrimLeft(text, TRIM_CUTSET)
 
   if len(t) == 0 {
     // No text to test
