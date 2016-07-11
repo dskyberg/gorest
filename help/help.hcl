@@ -43,7 +43,7 @@ Examples:
   /github get repo= my repo number = 152
 EOF
 
-new = <<EOF
+update = <<EOF
 github *update* modifies an existing issue in a GitHub repository.
 Provide only the keys you want to modify.
 
