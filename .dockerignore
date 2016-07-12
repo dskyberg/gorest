@@ -1,4 +1,6 @@
 Dockerfile
 README.md
 .git
+.gitignore
+env.sh
 tests

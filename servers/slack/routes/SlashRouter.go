@@ -159,11 +159,11 @@ func ImportHelpText(config *config.Config) {
     return
   }
 
-  helpPath := filepath.Join(config.GetString("APP_ROOT"), "help", "help.hcl" )
+  helpPath := filepath.Join(config.GetString("APP_ROOT"), "help.hcl" )
   log.Printf("Reading help from %s", helpPath)
   var err error
   helpResponses, err = help.ParseHelpFile(helpPath)
   if err != nil {
-    log.Printf("Error parsing help file: ", err)
+    log.Printf("Error parsing help file: ", err.Error())
   }
 }

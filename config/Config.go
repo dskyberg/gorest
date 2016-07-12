@@ -50,13 +50,15 @@ func New(fileName *string, defaults *map[string]interface{}) *Config {
   } else {
     path, config = ParseConfig("")
   }
-  c.AddConfigPath(".")
+  c.AddConfigPath(path)
   // Always add the current folder, unless already specified
   if path != "." {
     c.AddConfigPath(".")
   }
   if (config != "") {
     c.SetConfigName(config)
+  } else {
+    c.SetConfigName("config")
   }
 
   log.Printf("Loading config file: [%s]  from [%s]", config, path)

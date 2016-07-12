@@ -9,10 +9,12 @@ import (
   "github.com/confyrm/gorest/servers/slack"
   "github.com/confyrm/gorest/config"
   github "github.com/confyrm/gorest/githubclient"
+  //jww "github.com/spf13/jwalterweatherman"
 )
 
 func main() {
-
+  //jww.SetLogThreshold(jww.LevelDebug)
+  //jww.SetStdoutThreshold(jww.LevelDebug)
   c := SetupConfig()
   //  Run the admin server as a go function.  Currently, all it supports is
   // /exit.
@@ -40,7 +42,7 @@ func SetupConfig() *config.Config {
   configDefaults := map[string]interface{} {
     "APP_PORT": 8080,
     "APP_NAME": "devhub",
-    "APP_ROOT": "/Users/david/golang/src/github.com/confyrm/gorest",
+    "APP_ROOT": ".",
     "ADMIN_PORT": 8001,
     github.DefaultOwner: "confyrm",
     github.DefaultRepo: "devhub",
